@@ -119,7 +119,7 @@
   (go
     (while true
       (let [paths (<! check-files)]
-        (prn "##async## " paths)
+        ;(prn "##async## " paths)
         (doall (pmap
                  (fn [path]
                    (when-let [obj (dcm2parse (io/file path))]
