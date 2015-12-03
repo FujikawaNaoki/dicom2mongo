@@ -8,6 +8,8 @@
 
 (defn -main [& args]
   (mk-connect)
+  (set-index )
+  ;(watch-start "D:\\internal_storage\\caps\\images" true)
   (watch-start "D:\\internal_storage\\caps\\images" true)
   )
 

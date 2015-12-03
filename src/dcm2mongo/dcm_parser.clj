@@ -1,6 +1,6 @@
 (ns dcm2mongo.dcm-parser
-  (:import (java.io File ByteArrayOutputStream FilterOutputStream OutputStream InputStream FileInputStream)
-           (org.dcm4che3.io DicomInputStream DicomStreamException DicomInputStream$IncludeBulkData)
+  (:import (java.io File ByteArrayOutputStream FilterOutputStream OutputStream FileInputStream)
+           (org.dcm4che3.io DicomInputStream DicomInputStream$IncludeBulkData)
            (org.dcm4che3.json JSONWriter)
            (javax.json Json))
   (:use [dcm2mongo.personal-anonymizer])

@@ -3,8 +3,9 @@
                           StandardWatchEventKinds Files SimpleFileVisitor
                           FileVisitResult WatchService LinkOption WatchKey WatchEvent)
            (java.nio.file.attribute BasicFileAttributes)
-           (java.io File))
-  (:require [clojure.tools.logging :as log])
+           (java.io File FileFilter))
+  (:require [clojure.tools.logging :as log]
+            [clojure.core.async :as async :refer [>! <! put! take! timeout chan go]])
   (:use [dcm2mongo.dcm-parser]
         [dcm2mongo.mongo-service]
         [clojure.java.io :as io]
@@ -21,6 +22,7 @@
 (def watch_keys (atom nil))
 (def watch_recusive (atom false))
 (def init-touch (atom false))
+(def check-files (chan))
 
 (defn- ^Path getNioPath [^String s]
   (Paths/get s (into-array String [])))
@@ -29,14 +31,15 @@
   ([^Path sPath]
    (let [k (.register sPath @watcher
                       (into-array WatchEvent$Kind (list ENTRY_CREATE ENTRY_DELETE ENTRY_MODIFY)))]
-     (if (nil? (get @watch_keys k))
-       (do
-         (log/debug "watch regist: " (str sPath) ",init;"  @init-touch)
-         (when @init-touch
-           (doall (map #(when-let [obj (dcm2parse %)] (json2mongo obj))
-                       (filter #(.isFile %) (.listFiles (.toFile  sPath)))))))
-       (when-not (= (get @watch_keys k) (str sPath))
-         (log/debug "watch update: " (get @watch_keys k) " -> " (str sPath))))
+     (when (and (nil? (get @watch_keys k)) @init-touch)
+       (when-let [col (not-empty
+                        (map #(.getPath %)
+                             (.listFiles
+                               (.toFile sPath)
+                               (proxy [FileFilter] []
+                                 (accept [^File lf]
+                                   (and (.isFile lf) (.endsWith (.getName lf) ".dcm")))))))]
+         (put! check-files col)))
      (swap! watch_keys assoc k (str sPath))))
   ([^Path sPath recursive]
    (if recursive
@@ -66,13 +69,13 @@
     (log/info "#####ENTRY_CREATE;" event " -> nothing todo;")))
 
 
-(defmethod doEvent ENTRY_MODIFY [event];directory change nothing to do;
+(defmethod doEvent ENTRY_MODIFY [event]                     ;directory change nothing to do;
   (when-not (Files/isDirectory (:target event) (into-array LinkOption [NOFOLLOW_LINKS]))
     (log/info "#####ENTRY_MODIFY;" event)
     (let [^File f (.toFile (:target event))]
-      (when (and (.exists f) (.isFile f))
-        (when-let [obj (dcm2parse f)]
-          (json2mongo obj))))))
+      (when (and (.exists f) (.isFile f) (.endsWith (.getName f) ".dcm"))
+        (log/debug "into-check-files:" (.getPath f))
+        (put! check-files (.getPath f))))))
 
 (defmethod doEvent ENTRY_DELETE [event]
   (log/info "ENTRY_DELETE;" (:target event))
@@ -110,8 +113,18 @@
     (map (fn [f]
            (log/debug "touch-file;" f)
            (.setLastModified f (System/currentTimeMillis)))
-         (file-seq (io/file path)))
-    ))
+         (file-seq (io/file path)))))
+
+(defn- file2mongo []
+  (go
+    (while true
+      (let [paths (<! check-files)]
+        (prn "##async## " paths)
+        (doall (pmap
+                 (fn [path]
+                   (when-let [obj (dcm2parse (io/file path))]
+                     (json2mongo obj path))) (if (coll? paths) paths (list paths))))
+        ))))
 
 (defn watch-start
   ([^String startDir ^Boolean initTouch]
@@ -119,6 +132,7 @@
    (reset! watcher (.newWatchService ^FileSystem (FileSystems/getDefault)))
    (reset! watch_keys {})
    (reset! watch_recusive true)
+   (file2mongo)
    (register (getNioPath startDir) @watch_recusive)
    (watch-loop @watcher))
   ([^String startDir] (watch-start startDir false))

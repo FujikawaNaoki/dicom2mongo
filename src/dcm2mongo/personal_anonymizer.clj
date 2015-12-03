@@ -3,7 +3,7 @@
 (defn- anonymize-do-z
   "Z - 長さをゼロにして値をセットしない、あるいは、ゼロでない長さのダミーの値と置換する。値の形式はVRと一致させる。"
   [orgin-value]
-  (prn orgin-value)
+  ;(prn orgin-value)
   (if (seq? orgin-value)                                    ;TODO map?
     orgin-value
     orgin-value
@@ -13,7 +13,7 @@
 (defn- anonymize-do-x
   "X - データ要素を削除する。"
   [orgin-value]
-  (prn orgin-value)
+  ;(prn orgin-value)
   (if (seq? orgin-value)                                    ;TODO map?
     orgin-value
     orgin-value
@@ -25,7 +25,7 @@
   ここでの一貫性とは、例えば同じ検査のデータの場合、Study Instance UIDが同じに保つことである。
   利活用目的によっては一貫性が必須のケースがあるため、注意が必要である。"
   [orgin-value]
-  (prn orgin-value)
+  ;(prn orgin-value)
   (if (seq? orgin-value)                                    ;TODO map?
     orgin-value
     orgin-value
