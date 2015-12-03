@@ -1,5 +1,5 @@
 (ns dcm2mongo.dcm-parser
-  (:import (java.io File ByteArrayOutputStream FilterOutputStream OutputStream)
+  (:import (java.io File ByteArrayOutputStream FilterOutputStream OutputStream InputStream FileInputStream)
            (org.dcm4che3.io DicomInputStream DicomStreamException DicomInputStream$IncludeBulkData)
            (org.dcm4che3.json JSONWriter)
            (javax.json Json))
@@ -12,7 +12,7 @@
 
 (defn- json-generator [^OutputStream out]
   (.createGenerator
-    (Json/createGeneratorFactory (hash-map )) out))
+    (Json/createGeneratorFactory (hash-map)) out))
 
 (defn- setDicomIsConfig [^DicomInputStream in]
   (doto in
@@ -20,8 +20,9 @@
     (.setBulkDataFilePrefix "blk")
     (.setBulkDataFileSuffix nil)
     (.setConcatenateBulkDataFiles false)
-    (.setIncludeBulkData DicomInputStream$IncludeBulkData/URI)))
+    (.setIncludeBulkData DicomInputStream$IncludeBulkData/NO)))
 
+;/org/dcm4che/dcm4che-dict/3.3.7/dcm4che-dict-3.3.7.jar!/dataelements.xml tag
 (defn- dcm-parse [^DicomInputStream in out]
   (let [json-gen (json-generator out)]
     (doto (setDicomIsConfig in)
@@ -31,17 +32,16 @@
 
 (defn- read-file [^File f ^String encode]
   (with-open [byte-array (ByteArrayOutputStream.)
-               output (FilterOutputStream. byte-array)]
+              output (FilterOutputStream. byte-array)
+              f-stream (FileInputStream. f)]
     (try
-      (dcm-parse (DicomInputStream. f) output)
+      (dcm-parse (DicomInputStream. f-stream) output)
       (json/parse-string (.toString byte-array encode) true)
-      (catch DicomStreamException e (log/info e) nil)))
-  )
+      (catch Exception e (log/error
+                           (str f ":" (.getLocalizedMessage e))) nil))))
 
 (defn dcm2parse [^File f]
+  (log/debug "parse:" f)
   (when-let [obj (read-file f "UTF-8")]
-    (let [jsonObj (attrbute-anonymization obj)]
-      jsonObj
-      )
-    )
-  )
+    (attrbute-anonymization obj)))
+

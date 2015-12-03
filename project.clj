@@ -17,7 +17,7 @@
                  [org.dcm4che/dcm4che-core "3.3.7"]
                  [org.dcm4che/dcm4che-json "3.3.7"]
                  ;mongodb
-                 [com.novemberain/monger "3.0.1"]
+                 [congomongo "0.4.6"]
                 ]
   :plugins    [[lein-ancient "0.6.8"]]
   :repositories [["www.dcm4che.org" "http://www.dcm4che.org/maven2"]]

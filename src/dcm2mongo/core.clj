@@ -1,13 +1,13 @@
 (ns dcm2mongo.core
   (:gen-class)
-  (:use dcm2mongo.dcm-parser
-        dcm2mongo.mongo-service
+  (:use dcm2mongo.mongo-service
+        dcm2mongo.watch-dir
         )
 
-  )
+  (:require [clojure.tools.logging :as log]))
 
 (defn -main [& args]
-  (when-let [obj (dcm2parse (clojure.java.io/file "D:\\0009g6wx.dcm"))]
-    (json2mongo obj)
-    )
+  (mk-connect)
+  (watch-start "D:\\internal_storage\\caps\\images" true)
   )
+
